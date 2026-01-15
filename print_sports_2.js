@@ -224,6 +224,7 @@ async function processOpenOrders(token, ukTime, sku_db) {
         continue;
       }
       const sp = await performSP(token, order.NumOrderId, order, sku_db);
+      continue; // remove this after final shipping update
       if (sp == null) {
         continue;
       }
@@ -808,6 +809,7 @@ export async function handler(event) {
     );
     const auth = await authorize();
     await processOpenOrders(auth.Token, ukTime, sku_db);
+    return; // remove this after finalising shipping
     await printSportsOrders(
       auth.Token,
       sportsFolderId,
