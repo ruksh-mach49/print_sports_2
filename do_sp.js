@@ -405,7 +405,8 @@ function checkItemsSku(items) {
     if (
       sku.toLowerCase().includes("mat") ||
       sku.toLowerCase().includes("roller") ||
-      sku.toLowerCase().includes("rack")
+      sku.toLowerCase().includes("rack") ||
+      sku.toLowerCase().includes("barbell")
     )
       return false;
   }

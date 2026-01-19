@@ -142,7 +142,7 @@ export function isSportsOrder(order) {
     order.GeneralInfo.ReceivedDate != null &&
     order.CustomerInfo.Address.Town.trim().toLowerCase() !== "unknown" &&
     order.Items.length > 0 &&
-    order.ShippingInfo.TotalWeight > 29
+    order.ShippingInfo.TotalWeight > 30
   )
     return true;
   return false;

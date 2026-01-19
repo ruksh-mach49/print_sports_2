@@ -2,14 +2,14 @@ function getSplitPackaging2(items, NumOrderId) {
   const n = items.length;
   const splitArr = [];
   const regularItems = items
-    .filter((item) => item.weight <= 29)
+    .filter((item) => item.weight <= 30)
     .map((item) => ({
       sku: item.sku,
       category: item.category,
       weight: item.weight,
     }));
   const heavyItems = items
-    .filter((item) => item.weight > 29)
+    .filter((item) => item.weight > 30)
     .map((item) => ({
       weight: item.weight,
       sku: item.sku,
@@ -43,7 +43,7 @@ function getSplitPackaging2(items, NumOrderId) {
       const regularItemsArr = categoryMap[item.category];
       for (let j = 0; j < regularItemsArr.length; j++) {
         const regularItem = regularItemsArr[j];
-        if (item.weight / 2 + regularItem.weight <= 29) {
+        if (item.weight / 2 + regularItem.weight <= 30) {
           //console.log(`heavy item combined with ${regularItem.sku}`);
           let bin = [];
           const itemWt = item.weight / 2;
@@ -124,7 +124,7 @@ function getSplitPackaging2(items, NumOrderId) {
       weight: regularItem.weight,
     });
     const orginalStart = j;
-    while (i < j && wt + regularItems[j].weight <= 29) {
+    while (i < j && wt + regularItems[j].weight <= 30) {
       wt += regularItems[j].weight;
       bin.push({
         sku: regularItems[j].sku,
