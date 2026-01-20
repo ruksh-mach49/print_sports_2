@@ -31,6 +31,8 @@ const DPD_TWO_DAY = process.env.DPD_TWO_DAY;
 const DPD_NEXT_DAY = process.env.DPD_NEXT_DAY;
 const ABS_EVRI_LINKED_NEXT_DAY = process.env.ABS_EVRI_LINKED_NEXT_DAY;
 const ABS_DPD_NEXT_DAY = process.env.ABS_DPD_NEXT_DAY;
+const DHL_ND = process.env.DHL_ND;
+const DHL_48 = process.env.DHL_48;
 const UK_COUNTRY_ID = process.env.UK_COUNTRY_ID;
 const SNS_TOPIC_ARN = process.env.SNS_TOPIC_ARN;
 const limiter = new Bottleneck({
@@ -224,7 +226,6 @@ async function processOpenOrders(token, ukTime, sku_db) {
         continue;
       }
       const sp = await performSP(token, order.NumOrderId, order, sku_db);
-      continue; // remove this after final shipping update
       if (sp == null) {
         continue;
       }
@@ -317,13 +318,13 @@ function processNorthernOrder(order, shopify_map, postCodePrefixes) {
   const postCode = order.CustomerInfo.Address.PostCode.trim().toLowerCase();
   const isOutOfArea = postCodePrefixes.some((pc) => postCode.startsWith(pc));
   const isBTPostCode = postCode.startsWith("bt");
-  if (isBTPostCode) return DPD_TWO_DAY;
+  if (isBTPostCode) return DHL_48;
   if (totalWeight <= 14) {
     if (isExpress) return M28_24;
     else return M28_48;
   } else {
-    if (isOutOfArea) return DPD_TWO_DAY;
-    else return DPD_NEXT_DAY;
+    if (isOutOfArea) return DHL_48;
+    else return DHL_ND;
   }
 }
 
@@ -352,8 +353,10 @@ function processAmazonOrder(order, postCodePrefixes) {
   if (isPrime) {
     if (isOutOfArea || totalWeight > 14) return ABS_DPD_NEXT_DAY;
     else return ABS_EVRI_LINKED_NEXT_DAY;
-  } else if (totalWeight > 14) return DPD_NEXT_DAY;
-  else return M28_48;
+  } else if (totalWeight > 14) {
+    if (isOutOfArea) return DHL_48;
+    else return DHL_ND;
+  } else return M28_48;
 }
 
 function processOtherOrders(order, postCodePrefixes) {
@@ -361,8 +364,8 @@ function processOtherOrders(order, postCodePrefixes) {
   const postCode = order.CustomerInfo.Address.PostCode.trim().toLowerCase();
   const isOutOfArea = postCodePrefixes.some((pc) => postCode.startsWith(pc));
   if (totalWeight <= 14) return M28_48;
-  else if (isOutOfArea) return DPD_TWO_DAY;
-  else return DPD_NEXT_DAY;
+  else if (isOutOfArea) return DHL_48;
+  else return DHL_ND;
 }
 
 async function getShopifyData() {
@@ -809,7 +812,6 @@ export async function handler(event) {
     );
     const auth = await authorize();
     await processOpenOrders(auth.Token, ukTime, sku_db);
-    return; // remove this after finalising shipping
     await printSportsOrders(
       auth.Token,
       sportsFolderId,
@@ -856,40 +858,40 @@ export async function handler(event) {
       console.log(JSON.stringify(invoicePrintError, null, 2));
     }
     if (printErrors.length > 0) {
-      // try {
-      //   const sendSnsMsg = handleRetries(async () => {
-      //     await sns
-      //       .publish({
-      //         TopicArn: SNS_TOPIC_ARN,
-      //         Subject: "SPORTS 2 CRITICAL PRINT ERROR",
-      //         Message: JSON.stringify(printErrors, null, 2),
-      //       })
-      //       .promise();
-      //   });
-      //   await sendSnsMsg();
-      // } catch (err) {
-      //   console.log("SNS MESSAGE FAILED");
-      //   logError(err);
-      // }
+      try {
+        const sendSnsMsg = handleRetries(async () => {
+          await sns
+            .publish({
+              TopicArn: SNS_TOPIC_ARN,
+              Subject: "SPORTS 2 CRITICAL PRINT ERROR",
+              Message: JSON.stringify(printErrors, null, 2),
+            })
+            .promise();
+        });
+        await sendSnsMsg();
+      } catch (err) {
+        console.log("SNS MESSAGE FAILED");
+        logError(err);
+      }
     }
   } catch (err) {
     console.log("SPORTS 2 AUTOMATION FAILED!");
     logError(err);
-    // try {
-    //   const sendSnsMsg = handleRetries(async () => {
-    //     await sns
-    //       .publish({
-    //         TopicArn: SNS_TOPIC_ARN,
-    //         Subject: "SPORTS 2 AUTOMATION FAILED!",
-    //         Message: "",
-    //       })
-    //       .promise();
-    //   });
-    //   await sendSnsMsg();
-    // } catch (err) {
-    //   console.log("SNS MSG FAILED!");
-    //   logError(err);
-    // }
+    try {
+      const sendSnsMsg = handleRetries(async () => {
+        await sns
+          .publish({
+            TopicArn: SNS_TOPIC_ARN,
+            Subject: "SPORTS 2 AUTOMATION FAILED!",
+            Message: "",
+          })
+          .promise();
+      });
+      await sendSnsMsg();
+    } catch (err) {
+      console.log("SNS MSG FAILED!");
+      logError(err);
+    }
   }
 }
 
@@ -911,6 +913,8 @@ function checkEnvVar() {
     "ABS_EVRI_LINKED_NEXT_DAY",
     "EVRI_M28_48",
     "EVRI_M28_24",
+    "DHL_48",
+    "DHL_ND",
     "UK_COUNTRY_ID",
   ];
 
